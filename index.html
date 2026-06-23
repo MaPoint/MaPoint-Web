@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaPoint — Sistema de Navegación Autónoma</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080c10;--panel:#0d1320;--border:#1a2a3a;--accent:#00d4ff;--accent2:#00ff9d;--warn:#ff6b35;--text:#c8daea;--muted:#4a6070;--glow:0 0 18px rgba(0,212,255,.35);--glow2:0 0 18px rgba(0,255,157,.35)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;font-weight:300;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;background:rgba(8,12,16,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:'Orbitron',monospace;font-weight:900;font-size:1.2rem;color:var(--accent);letter-spacing:.15em;text-shadow:var(--glow)}
+.nav-logo span{color:var(--accent2)}
+.nav-links{display:flex;gap:28px}
+.nav-links a{font-family:'Share Tech Mono',monospace;font-size:.78rem;color:var(--muted);text-decoration:none;letter-spacing:.1em;transition:color .2s}
+.nav-links a:hover{color:var(--accent)}
+
+/* HERO */
+#hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px 60px;text-align:center;z-index:1}
+.radar-bg{position:absolute;width:700px;height:700px;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none}
+.radar-bg::before,.radar-bg::after{content:'';position:absolute;border-radius:50%;border:1px solid rgba(0,212,255,.12)}
+.radar-bg::before{inset:0;animation:pulse-ring 4s ease-out infinite}
+.radar-bg::after{inset:80px;animation:pulse-ring 4s ease-out infinite 1.3s}
+.ring3{position:absolute;inset:160px;border-radius:50%;border:1px solid rgba(0,212,255,.12);animation:pulse-ring 4s ease-out infinite 2.6s}
+@keyframes pulse-ring{0%{opacity:.6;transform:scale(1)}100%{opacity:0;transform:scale(1.15)}}
+.sweep{position:absolute;width:350px;height:350px;top:50%;left:50%;margin:-175px 0 0 -175px;border-radius:50%;overflow:hidden;pointer-events:none}
+.sweep::after{content:'';position:absolute;top:50%;left:50%;width:100%;height:100%;background:conic-gradient(from 0deg,transparent 0deg,rgba(0,212,255,.08) 60deg,transparent 60deg);transform-origin:0 0;animation:sweep-rotate 4s linear infinite}
+@keyframes sweep-rotate{to{transform:rotate(360deg)}}
+.badge{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.2em;color:var(--accent2);border:1px solid var(--accent2);padding:4px 14px;border-radius:2px;margin-bottom:24px;display:inline-block;text-shadow:var(--glow2);box-shadow:var(--glow2);animation:fade-in .6s ease both}
+h1{font-family:'Orbitron',monospace;font-weight:900;font-size:clamp(3rem,8vw,6.5rem);color:#fff;line-height:1;letter-spacing:.05em;text-shadow:var(--glow);animation:fade-in .8s ease .2s both}
+h1 .accent{color:var(--accent)}
+.hero-sub{font-family:'Share Tech Mono',monospace;font-size:clamp(.8rem,1.5vw,1rem);color:var(--muted);letter-spacing:.12em;margin-top:12px;animation:fade-in .8s ease .4s both}
+.version-tag{font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--warn);margin-top:6px;animation:fade-in .8s ease .5s both}
+.dl-btn{display:inline-flex;align-items:center;gap:12px;margin-top:44px;padding:18px 44px;background:transparent;border:2px solid var(--accent);color:var(--accent);font-family:'Orbitron',monospace;font-weight:700;font-size:.95rem;letter-spacing:.15em;text-decoration:none;text-transform:uppercase;cursor:pointer;position:relative;overflow:hidden;transition:color .3s;animation:fade-in .8s ease .6s both;box-shadow:var(--glow)}
+.dl-btn::before{content:'';position:absolute;inset:0;background:var(--accent);transform:translateX(-101%);transition:transform .35s ease;z-index:-1}
+.dl-btn:hover{color:var(--bg)}.dl-btn:hover::before{transform:translateX(0)}
+.hero-note{font-size:.72rem;color:var(--muted);font-family:'Share Tech Mono',monospace;margin-top:12px;animation:fade-in .8s ease .7s both}
+@keyframes fade-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* STATS */
+.stats-row{display:flex;gap:1px;background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border);z-index:1;position:relative}
+.stat{flex:1;padding:28px 20px;background:var(--panel);text-align:center;transition:background .25s}
+.stat:hover{background:#111a26}
+.stat-val{font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:700;color:var(--accent);text-shadow:var(--glow)}
+.stat-lbl{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.15em;margin-top:4px}
+
+/* SECCIONES */
+section{position:relative;z-index:1;padding:90px 40px;max-width:1200px;margin:0 auto}
+.sec-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.3em;color:var(--accent2);text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-family:'Orbitron',monospace;font-weight:700;font-size:clamp(1.4rem,3vw,2.2rem);color:#fff;margin-bottom:20px}
+.sec-body{font-size:.95rem;line-height:1.75;color:var(--text);max-width:700px}
+
+/* MÓDULOS */
+.modules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:2px;margin-top:50px;background:var(--border);border:1px solid var(--border)}
+.module-card{background:var(--panel);padding:32px 28px;position:relative;overflow:hidden;transition:background .25s}
+.module-card:hover{background:#111a26}
+.module-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent);opacity:0;transition:opacity .25s}
+.module-card:hover::before{opacity:1}
+.module-icon{font-size:1.8rem;margin-bottom:14px;display:block}
+.module-title{font-family:'Orbitron',monospace;font-weight:700;font-size:.85rem;color:var(--accent);letter-spacing:.1em;margin-bottom:10px}
+.module-desc{font-size:.85rem;color:var(--muted);line-height:1.65}
+
+/* FLOW */
+.flow{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:30px;margin-top:50px}
+.flow-step{position:relative;padding:28px 22px;border:1px solid var(--border);background:var(--panel)}
+.flow-num{font-family:'Orbitron',monospace;font-size:3rem;font-weight:900;color:rgba(0,212,255,.08);line-height:1;margin-bottom:10px}
+.flow-step-title{font-family:'Share Tech Mono',monospace;font-size:.8rem;color:var(--accent);letter-spacing:.1em;margin-bottom:8px}
+.flow-step-desc{font-size:.82rem;color:var(--muted);line-height:1.6}
+
+/* TAGS */
+.tags{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.tag{font-family:'Share Tech Mono',monospace;font-size:.72rem;padding:6px 14px;border:1px solid var(--border);color:var(--muted);letter-spacing:.1em;transition:border-color .2s,color .2s}
+.tag:hover{border-color:var(--accent);color:var(--accent)}
+
+/* GUÍA */
+.guia-intro{font-size:.93rem;line-height:1.75;color:var(--text);max-width:780px;margin-bottom:50px}
+.tabs{display:flex;gap:2px;background:var(--border);border:1px solid var(--border);margin-bottom:2px;flex-wrap:wrap}
+.tab-btn{padding:13px 24px;background:var(--panel);border:none;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.15em;color:var(--muted);transition:background .2s,color .2s;flex:1;min-width:130px;border-bottom:2px solid transparent}
+.tab-btn:hover{background:#111a26;color:var(--text)}
+.tab-btn.active{background:#111a26;color:var(--accent);border-bottom:2px solid var(--accent)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* DIAGRAMA */
+.diagram-wrap{background:var(--panel);border:1px solid var(--border);padding:30px 20px;overflow-x:auto;display:flex;justify-content:center}
+.diagram-wrap svg{max-width:100%;height:auto}
+
+/* TABLA PINES */
+.pin-table{width:100%;border-collapse:collapse;margin-top:24px;font-family:'Share Tech Mono',monospace;font-size:.78rem}
+.pin-table th{background:var(--border);color:var(--accent);padding:10px 16px;text-align:left;letter-spacing:.12em;font-weight:400}
+.pin-table td{padding:9px 16px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+.pin-table tr:hover td{background:#0f1a24}
+.pin-chip{display:inline-block;padding:2px 8px;border-radius:2px;font-size:.7rem;font-family:'Share Tech Mono',monospace;letter-spacing:.05em}
+.chip-esp{background:#1a3a2a;color:var(--accent2);border:1px solid #1e5038}
+.chip-cam{background:#1a2a3a;color:var(--accent);border:1px solid #1a3a5a}
+.chip-gps{background:#2a1a3a;color:#c792ea;border:1px solid #3a2a5a}
+.chip-mot{background:#3a1a1a;color:var(--warn);border:1px solid #5a2a1a}
+
+/* PASOS FIRMWARE — ACORDEÓN */
+.fw-steps{display:flex;flex-direction:column;gap:2px;margin-top:16px}
+.fw-step{background:var(--panel);border:1px solid var(--border);border-left:3px solid var(--border);overflow:hidden;transition:border-color .2s}
+.fw-step.open{border-left-color:var(--accent)}
+.fw-step-header{display:flex;align-items:center;gap:16px;padding:16px 22px;cursor:pointer;user-select:none}
+.fw-step-header:hover{background:#0f1820}
+.fw-step-num{font-family:'Orbitron',monospace;font-weight:700;font-size:.8rem;color:var(--accent);min-width:28px}
+.fw-step-title{font-family:'Share Tech Mono',monospace;font-size:.82rem;color:var(--text);letter-spacing:.1em;flex:1}
+.fw-chevron{width:16px;height:16px;color:var(--muted);transition:transform .25s;flex-shrink:0}
+.fw-step.open .fw-chevron{transform:rotate(180deg)}
+.fw-body{max-height:0;overflow:hidden;transition:max-height .4s ease;padding:0 22px}
+.fw-step.open .fw-body{max-height:3000px;padding-bottom:24px}
+.fw-body p{font-size:.88rem;line-height:1.75;color:var(--muted);margin-bottom:14px}
+.fw-body p strong{color:var(--text)}
+.fw-body .paso-num{font-family:'Share Tech Mono',monospace;color:var(--accent2);font-size:.78rem;margin-bottom:6px;display:block}
+
+/* CÓDIGO — FIX PRINCIPAL: visible completo, scroll horizontal */
+pre{
+  background:#040810;
+  border:1px solid var(--border);
+  border-left:3px solid var(--accent);
+  padding:18px 20px;
+  overflow-x:auto;          /* scroll si es muy ancho */
+  overflow-y:visible;       /* nunca cortar verticalmente */
+  font-family:'Share Tech Mono',monospace;
+  font-size:.78rem;
+  line-height:1.75;
+  color:#abb2bf;
+  margin:14px 0;
+  position:relative;
+  white-space:pre;          /* respetar saltos de línea del código */
+  word-break:normal;
+  max-height:none !important; /* nunca limitar la altura */
+}
+.copy-btn{position:absolute;top:10px;right:12px;background:var(--border);border:none;color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:.65rem;padding:4px 10px;cursor:pointer;letter-spacing:.1em;transition:background .2s,color .2s;z-index:2}
+.copy-btn:hover{background:var(--accent);color:var(--bg)}
+.kw{color:#c678dd}.fn{color:#61afef}.str{color:#98c379}.cm{color:#5c6370;font-style:italic}.num{color:#d19a66}
+
+/* CHECKLIST */
+.checklist{list-style:none;margin-top:20px;display:flex;flex-direction:column;gap:10px}
+.checklist li{display:flex;align-items:flex-start;gap:14px;background:var(--panel);border:1px solid var(--border);padding:14px 18px;font-size:.87rem;color:var(--text);cursor:pointer;transition:background .2s;user-select:none;line-height:1.6}
+.checklist li:hover{background:#111a26}
+.checklist li.done{opacity:.5;text-decoration:line-through;color:var(--muted)}
+.check-box{width:18px;height:18px;border:1px solid var(--muted);border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:transparent;transition:all .2s;margin-top:2px}
+.checklist li.done .check-box{background:var(--accent2);border-color:var(--accent2);color:var(--bg)}
+
+/* SUGERENCIAS CHAT */
+.sugerencia-btn{background:var(--panel);border:1px solid var(--border);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:.72rem;padding:9px 16px;cursor:pointer;letter-spacing:.06em;transition:all .2s;text-align:left}
+.sugerencia-btn:hover{border-color:var(--accent);color:var(--accent);background:#0f1a24}
+
+/* CHAT */
+#chat-window{background:var(--panel);border:1px solid var(--border);display:flex;flex-direction:column;height:540px}
+#chat-messages{flex:1;overflow-y:auto;padding:24px 20px;display:flex;flex-direction:column;gap:18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.msg{display:flex;gap:14px;align-items:flex-start}
+.msg-bot{flex-direction:row}.msg-user{flex-direction:row-reverse}
+.msg-avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-weight:700;font-size:.65rem}
+.msg-bot .msg-avatar{background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--bg)}
+.msg-user .msg-avatar{background:var(--border);color:var(--muted)}
+.msg-bubble{max-width:78%;padding:14px 18px;font-size:.88rem;line-height:1.75;color:var(--text);border:1px solid var(--border)}
+.msg-bot .msg-bubble{background:#0b1520;border-color:#1a2d3a}
+.msg-user .msg-bubble{background:#0d1f2d;border-color:#1a2a3a;color:#a8c0d0}
+.msg-bubble code{background:#050810;border:1px solid var(--border);padding:1px 6px;font-family:'Share Tech Mono',monospace;font-size:.78rem;color:var(--accent);border-radius:2px}
+/* código dentro del chat — también visible completo */
+.msg-bubble pre{background:#040810!important;border:1px solid var(--border)!important;border-left:3px solid var(--accent)!important;padding:12px 14px!important;margin:10px 0!important;overflow-x:auto;overflow-y:visible!important;max-height:none!important;font-family:'Share Tech Mono',monospace!important;font-size:.75rem!important;color:#abb2bf!important;white-space:pre!important;word-break:normal!important}
+.msg-bubble ul,.msg-bubble ol{padding-left:20px;margin:8px 0}
+.msg-bubble li{margin:4px 0}
+.msg-bubble strong{color:#e0ecf8}
+.typing-dots{display:flex;gap:5px;align-items:center;padding:4px 0}
+.typing-dots span{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:dot-bounce .9s infinite}
+.typing-dots span:nth-child(2){animation-delay:.15s}.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes dot-bounce{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+#chat-input-row{display:flex;gap:10px;border-top:1px solid var(--border);padding:12px 16px}
+#chat-input{flex:1;background:#050810;border:1px solid var(--border);color:var(--text);font-family:'Exo 2',sans-serif;font-size:.88rem;padding:10px 14px;resize:none;outline:none;line-height:1.5;transition:border-color .2s}
+#chat-input:focus{border-color:var(--accent)}
+#chat-send{background:var(--accent);border:none;color:var(--bg);width:48px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0}
+#chat-send:hover{background:#79baff}
+#chat-send:disabled{background:var(--border);color:var(--muted);cursor:not-allowed}
+.chat-error{background:#1a0808;border:1px solid #5a1a1a;color:#ff8080;padding:10px 14px;font-size:.82rem;font-family:'Share Tech Mono',monospace;margin:4px 0}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:30px 40px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+.footer-logo{font-family:'Orbitron',monospace;font-weight:900;font-size:.9rem;color:var(--muted);letter-spacing:.15em}
+.footer-note{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--border);letter-spacing:.1em}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+@media(max-width:680px){nav{padding:0 20px}.nav-links{display:none}section{padding:60px 20px}footer{flex-direction:column;gap:10px;text-align:center}.stats-row{flex-wrap:wrap}.stat{min-width:50%}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">MA<span>POINT</span></div>
+  <div class="nav-links">
+    <a href="#que-es">Sistema</a>
+    <a href="#modulos">Módulos</a>
+    <a href="#como-funciona">Funcionamiento</a>
+    <a href="#guia">Guía de Montaje</a>
+    <a href="#asistente">Asistente IA</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div id="hero">
+  <div class="radar-bg"><div class="ring3"></div></div>
+  <div class="sweep"></div>
+  <div class="badge">◈ SISTEMA OPERATIVO ◈</div>
+  <h1>MA<span class="accent">POINT</span></h1>
+  <p class="hero-sub">SISTEMA DE NAVEGACIÓN AUTÓNOMA Y TELEMETRÍA EN TIEMPO REAL</p>
+  <p class="version-tag">▸ v11.0 — Plataforma de Control de Misión</p>
+  <a href="https://drive.google.com/file/d/1-qgwFGbglFYunkVxdyrteUpsy40_bmU2/view?usp=sharing" class="dl-btn" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M12 3v13M6 11l6 6 6-6M3 21h18"/></svg>
+    Descargar MaPoint
+  </a>
+  <p class="hero-note">Windows 10/11 · 64-bit · ~50 MB instalado</p>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat"><div class="stat-val">ESP32</div><div class="stat-lbl">MICROCONTROLADOR</div></div>
+  <div class="stat"><div class="stat-val">NMEA</div><div class="stat-lbl">PROTOCOLO GPS</div></div>
+  <div class="stat"><div class="stat-val">CV2</div><div class="stat-lbl">VISIÓN ARTIFICIAL</div></div>
+  <div class="stat"><div class="stat-val">UDP</div><div class="stat-lbl">COMUNICACIÓN</div></div>
+  <div class="stat"><div class="stat-val">HSV</div><div class="stat-lbl">ANÁLISIS DE SUELO</div></div>
+</div>
+
+<!-- QUÉ ES -->
+<section id="que-es">
+  <p class="sec-label">// 01 — PRESENTACIÓN</p>
+  <h2 class="sec-title">¿Qué es MaPoint?</h2>
+  <p class="sec-body">MaPoint es un programa para <strong style="color:#c8daea">Windows</strong> que hace de centro de mando para un robot agrícola que se mueve solo. El robot se conecta al ordenador por WiFi: le manda su posición GPS en tiempo real, y el programa le dice por dónde ir.</p>
+  <p class="sec-body" style="margin-top:16px">El operador marca puntos en un mapa por satélite y el robot los recorre automáticamente, esquivando obstáculos con la cámara. Si lleva la compuerta de semillas, puede programarla para abrirse y cerrarse en coordenadas concretas del campo.</p>
+  <div class="tags" style="margin-top:28px">
+    <span class="tag">Python 3</span><span class="tag">OpenCV</span><span class="tag">tkinter</span><span class="tag">NumPy</span><span class="tag">Pandas</span><span class="tag">Matplotlib</span><span class="tag">tkintermapview</span><span class="tag">Socket UDP</span><span class="tag">NMEA / GGA</span><span class="tag">HTTP MJPEG</span><span class="tag">KML Export</span><span class="tag">XLSX Report</span>
+  </div>
+</section>
+
+<!-- MÓDULOS -->
+<section id="modulos" style="padding-top:0">
+  <p class="sec-label">// 02 — SUBSISTEMAS</p>
+  <h2 class="sec-title">¿Qué hace el sistema?</h2>
+  <div class="modules-grid">
+    <div class="module-card"><span class="module-icon">🛰️</span><div class="module-title">GPS EN TIEMPO REAL</div><p class="module-desc">El robot envía su posición cada segundo. El programa la recibe, calcula a qué distancia está del siguiente punto y en qué dirección tiene que girar.</p></div>
+    <div class="module-card"><span class="module-icon">🗺️</span><div class="module-title">MAPA POR SATÉLITE</div><p class="module-desc">El operador hace clic en el mapa para marcar los puntos que quiere que el robot visite. La ruta se dibuja en tiempo real y el robot aparece moviéndose sobre el mapa.</p></div>
+    <div class="module-card"><span class="module-icon">🤖</span><div class="module-title">DETECCIÓN DE OBSTÁCULOS</div><p class="module-desc">La cámara analiza lo que tiene delante dividiendo la imagen en tres zonas. Si detecta algo en el camino, decide esquivarlo automáticamente por la izquierda o la derecha.</p></div>
+    <div class="module-card"><span class="module-icon">📡</span><div class="module-title">VÍDEO EN DIRECTO</div><p class="module-desc">Muestra la imagen de la cámara del robot con información superpuesta: qué decisión está tomando la IA y a cuántos fotogramas por segundo va la señal.</p></div>
+    <div class="module-card"><span class="module-icon">🌱</span><div class="module-title">ANÁLISIS DE SUELO</div><p class="module-desc">Analiza el color y la textura del suelo visible en la cámara para saber si es buen momento para plantar. Detecta humedad, vegetación ya existente o suelo demasiado seco.</p></div>
+    <div class="module-card"><span class="module-icon">⚙️</span><div class="module-title">COMPUERTA DE SEMILLAS</div><p class="module-desc">Puedes programar en qué punto del campo se abre y se cierra la compuerta. El robot lo hace solo cuando llega a esa coordenada GPS durante la ruta.</p></div>
+    <div class="module-card"><span class="module-icon">📊</span><div class="module-title">INFORMES AL TERMINAR</div><p class="module-desc">Al acabar la misión, genera automáticamente un informe de texto, una hoja de Excel con estadísticas y un archivo para ver la ruta exacta en Google Earth.</p></div>
+    <div class="module-card"><span class="module-icon">🎮</span><div class="module-title">CONTROL MANUAL</div><p class="module-desc">Con las flechas del teclado puedes mover el robot tú mismo cuando quieras. La tecla M centra la dirección. Puedes cambiar entre modo manual y autónomo en cualquier momento.</p></div>
+  </div>
+</section>
+
+<!-- CÓMO FUNCIONA -->
+<section id="como-funciona" style="padding-top:0">
+  <p class="sec-label">// 03 — ARQUITECTURA</p>
+  <h2 class="sec-title">¿Cómo funciona por dentro?</h2>
+  <p class="sec-body">MaPoint hace tres cosas a la vez sin que se bloqueen entre sí. Es como tener tres personas trabajando en paralelo: una mirando el GPS, otra viendo la cámara, y una tercera decidiendo hacia dónde ir. El programa las coordina para que la pantalla siempre responda fluidamente.</p>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">01</div><div class="flow-step-title">RECIBE EL GPS</div><p class="flow-step-desc">Consulta la posición del robot por WiFi cada 0,8 segundos y actualiza el punto en el mapa.</p></div>
+    <div class="flow-step"><div class="flow-num">02</div><div class="flow-step-title">VE LA CÁMARA</div><p class="flow-step-desc">Recibe el vídeo del robot, lo analiza para buscar obstáculos y muestra todo en pantalla.</p></div>
+    <div class="flow-step"><div class="flow-num">03</div><div class="flow-step-title">DECIDE EL RUMBO</div><p class="flow-step-desc">Compara dónde está el robot con el siguiente punto de la ruta. Si está de lado, primero gira; si está cerca (menos de 2 metros), pasa al siguiente punto.</p></div>
+    <div class="flow-step"><div class="flow-num">04</div><div class="flow-step-title">ENVÍA ÓRDENES</div><p class="flow-step-desc">Manda al robot mensajes de texto por WiFi: "adelante", "izquierda", "parar"... El ESP32 los recibe y mueve los motores.</p></div>
+    <div class="flow-step"><div class="flow-num">05</div><div class="flow-step-title">ACTUALIZA LA PANTALLA</div><p class="flow-step-desc">Todo se actualiza cada 50 milisegundos para que la interfaz no se congele mientras el robot trabaja.</p></div>
+    <div class="flow-step"><div class="flow-num">06</div><div class="flow-step-title">GENERA EL INFORME</div><p class="flow-step-desc">Al terminar, crea el Excel, el informe de texto y el archivo de Google Earth con la ruta recorrida.</p></div>
+  </div>
+</section>
+
+<!-- GUÍA -->
+<section id="guia" style="border-top:1px solid var(--border)">
+  <p class="sec-label">// 04 — GUÍA TÉCNICA</p>
+  <h2 class="sec-title">Guía de Montaje y Programación</h2>
+  <p class="guia-intro">Aquí te explicamos, paso a paso y en lenguaje sencillo, cómo montar el robot y programarlo para que funcione con MaPoint. El robot es de <strong>tracción trasera</strong>: dos motores mueven las ruedas de atrás, y un <strong>servo</strong> gira las ruedas delanteras como la dirección de un coche. El GPS Adafruit le dice dónde está, la ESP32-CAM graba lo que ve, y la compuerta (opcional) siembra de forma automática. Sigue las pestañas en orden la primera vez.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('materiales',this)">▸ QUÉ NECESITAS</button>
+    <button class="tab-btn" onclick="showTab('diagrama',this)">▸ CONEXIONES</button>
+    <button class="tab-btn" onclick="showTab('firmware',this)">▸ PROGRAMAR ESP32</button>
+    <button class="tab-btn" onclick="showTab('camfirmware',this)">▸ PROGRAMAR CÁMARA</button>
+    <button class="tab-btn" onclick="showTab('checklist',this)">▸ CHECKLIST</button>
+  </div>
+
+  <!-- MATERIALES -->
+  <div id="tab-materiales" class="tab-panel active">
+    <div style="background:var(--panel);border:1px solid var(--border);padding:32px 28px">
+      <p class="sec-label" style="margin-bottom:6px">LO QUE NECESITAS COMPRAR</p>
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px">Los marcados con <span style="color:#f0a500">★</span> son opcionales (solo si quieres la compuerta de semillas).</p>
+      <table class="pin-table">
+        <thead><tr><th>Componente</th><th>Para qué sirve</th><th>Cant.</th></tr></thead>
+        <tbody>
+          <tr><td>ESP32 DevKit v1</td><td><span class="pin-chip chip-esp">CEREBRO</span> El corazón del robot. Crea la red WiFi, recibe el GPS y mueve los motores</td><td>1</td></tr>
+          <tr><td>ESP32-CAM AI-Thinker</td><td><span class="pin-chip chip-cam">CÁMARA</span> Graba vídeo que MaPoint usa para detectar obstáculos</td><td>1</td></tr>
+          <tr><td>GPS Adafruit Ultimate (PA6H)</td><td><span class="pin-chip chip-gps">GPS</span> Le dice al robot exactamente dónde está en el mundo</td><td>1</td></tr>
+          <tr><td>Driver de motores L298N</td><td><span class="pin-chip chip-mot">MOTOR</span> Amplifica la señal del ESP32 para que los motores tengan fuerza suficiente</td><td>1</td></tr>
+          <tr><td>Motores DC con reductora (6–12 V)</td><td><span class="pin-chip chip-mot">MOTOR</span> Las ruedas traseras que empujan el robot hacia adelante</td><td>2</td></tr>
+          <tr><td>Servo estándar (MG996R o similar)</td><td><span class="pin-chip chip-mot">SERVO</span> Gira las ruedas delanteras para dirigir, como la dirección de un coche</td><td>1</td></tr>
+          <tr><td>Chasis de robot (tracción trasera)</td><td>La estructura física con ruedas y tornillería</td><td>1</td></tr>
+          <tr><td>Batería LiPo 7,4 V (mín. 1500 mAh)</td><td>Da energía a todo. Más mAh = más autonomía</td><td>1</td></tr>
+          <tr><td>Regulador DC-DC a 5 V</td><td>Convierte la batería a 5 V para alimentar el ESP32 de forma segura</td><td>1</td></tr>
+          <tr><td>Servo pequeño <span style="color:#f0a500">★</span></td><td><span style="color:#f0a500">★</span> Abre y cierra la compuerta de semillas en los puntos programados</td><td>1</td></tr>
+          <tr><td>Cables Dupont (macho-hembra)</td><td>Para hacer todas las conexiones sin soldar</td><td>30+</td></tr>
+          <tr><td>Protoboard pequeña</td><td>Para repartir la alimentación de forma ordenada</td><td>1</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:24px;background:#0a1218;border:1px solid #f0a500;border-left:3px solid #f0a500;padding:16px 20px">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:#f0a500;letter-spacing:.15em;margin-bottom:8px">⚠ IMPORTANTE ANTES DE EMPEZAR</p>
+        <p style="font-size:.85rem;color:var(--muted);line-height:1.7">El GPS Adafruit funciona a <strong style="color:var(--text)">3,3 voltios</strong>. Si le conectas 5 voltios directamente, se rompe. El L298N sí necesita la tensión completa de la batería (7–12 V) para los motores, pero sus pines de señal se conectan al ESP32 sin problema.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIAGRAMA -->
+  <div id="tab-diagrama" class="tab-panel">
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 960 700" xmlns="http://www.w3.org/2000/svg" width="960" font-family="'Share Tech Mono',monospace">
+        <defs>
+          <marker id="a1" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#00ff9d"/></marker>
+          <marker id="a2" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#00d4ff"/></marker>
+          <marker id="a3" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#c792ea"/></marker>
+          <marker id="a4" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ff6b35"/></marker>
+          <marker id="a5" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#f0a500"/></marker>
+          <filter id="gf"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="960" height="700" fill="#080c10"/>
+        <text x="480" y="32" text-anchor="middle" fill="#00d4ff" font-size="12" letter-spacing="4" filter="url(#gf)">ESQUEMA DE CONEXIONES — MAPOINT ROBOT</text>
+        <text x="480" y="46" text-anchor="middle" fill="#1a2a3a" font-size="8" letter-spacing="2">ESP32 · ESP32-CAM · GPS Adafruit · L298N · Servo dirección · Servo compuerta</text>
+        <!-- ESP32 -->
+        <rect x="350" y="170" width="210" height="270" rx="6" fill="#0d1320" stroke="#00ff9d" stroke-width="1.5"/>
+        <rect x="350" y="170" width="210" height="26" rx="6" fill="#1a3a2a"/>
+        <rect x="350" y="184" width="210" height="12" fill="#1a3a2a"/>
+        <text x="455" y="187" text-anchor="middle" fill="#00ff9d" font-size="10" letter-spacing="3">ESP32 DEVKIT</text>
+        <text x="455" y="197" text-anchor="middle" fill="#1e5038" font-size="7" letter-spacing="2">Cerebro del robot</text>
+        <rect x="415" y="278" width="80" height="60" rx="4" fill="#0a1a10" stroke="#1e5038" stroke-width="1"/>
+        <text x="455" y="306" text-anchor="middle" fill="#00ff9d" font-size="9">ESP32</text>
+        <text x="455" y="318" text-anchor="middle" fill="#1e5038" font-size="7">WiFi AP</text>
+        <text x="358" y="222" fill="#4a6070" font-size="7.5">GPIO16 ← GPS TX</text>
+        <text x="358" y="236" fill="#4a6070" font-size="7.5">GPIO17 → GPS RX</text>
+        <text x="358" y="250" fill="#4a6070" font-size="7.5">3.3V  → GPS VIN</text>
+        <text x="358" y="264" fill="#4a6070" font-size="7.5">GND   → GPS GND</text>
+        <text x="558" y="222" fill="#4a6070" font-size="7.5" text-anchor="end">GPIO26 → IN1 L298N</text>
+        <text x="558" y="236" fill="#4a6070" font-size="7.5" text-anchor="end">GPIO27 → IN2 L298N</text>
+        <text x="558" y="250" fill="#4a6070" font-size="7.5" text-anchor="end">GPIO13 → ENA (PWM)</text>
+        <text x="558" y="264" fill="#4a6070" font-size="7.5" text-anchor="end">GPIO25 → Servo dir.</text>
+        <text x="558" y="278" fill="#4a6070" font-size="7.5" text-anchor="end">GPIO33 → Compuerta ★</text>
+        <circle cx="352" cy="219" r="3" fill="#c792ea"/><circle cx="352" cy="233" r="3" fill="#1a2a3a"/><circle cx="352" cy="247" r="3" fill="#c792ea"/><circle cx="352" cy="261" r="3" fill="#1a2a3a"/>
+        <circle cx="558" cy="219" r="3" fill="#ff6b35"/><circle cx="558" cy="233" r="3" fill="#ff6b35"/><circle cx="558" cy="247" r="3" fill="#ff6b35"/><circle cx="558" cy="261" r="3" fill="#00d4ff"/><circle cx="558" cy="275" r="3" fill="#f0a500"/>
+        <!-- GPS -->
+        <rect x="60" y="100" width="185" height="120" rx="5" fill="#0d1320" stroke="#c792ea" stroke-width="1.5"/>
+        <rect x="60" y="100" width="185" height="20" rx="5" fill="#2a1a3a"/><rect x="60" y="112" width="185" height="8" fill="#2a1a3a"/>
+        <text x="152" y="114" text-anchor="middle" fill="#c792ea" font-size="9" letter-spacing="2">GPS ADAFRUIT</text>
+        <text x="152" y="123" text-anchor="middle" fill="#3a2a5a" font-size="7">Ultimate GPS (PA6H)</text>
+        <g fill="#4a6070" font-size="8"><text x="72" y="142">VIN  → 3.3V del ESP32</text><text x="72" y="156">GND  → GND</text><text x="72" y="170">TX   → GPIO16 (UART2)</text><text x="72" y="184">RX   → GPIO17 (opcional)</text><text x="72" y="198">FIX  → LED de satélites</text></g>
+        <circle cx="243" cy="169" r="3" fill="#c792ea"/><circle cx="243" cy="183" r="3" fill="#c792ea"/>
+        <path d="M243,169 L300,169 L300,219 L352,219" stroke="#c792ea" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#a3)"/>
+        <path d="M243,139 L295,139 L295,247 L352,247" stroke="#c792ea" stroke-width="1.2" fill="none" stroke-dasharray="3,3"/>
+        <text x="258" y="162" fill="#c792ea" font-size="7">NMEA TX</text><text x="258" y="135" fill="#c792ea" font-size="7">3.3V</text>
+        <!-- L298N -->
+        <rect x="640" y="100" width="235" height="185" rx="5" fill="#0d1320" stroke="#ff6b35" stroke-width="1.5"/>
+        <rect x="640" y="100" width="235" height="20" rx="5" fill="#3a1a1a"/><rect x="640" y="112" width="235" height="8" fill="#3a1a1a"/>
+        <text x="757" y="114" text-anchor="middle" fill="#ff6b35" font-size="9" letter-spacing="2">DRIVER L298N</text>
+        <text x="757" y="123" text-anchor="middle" fill="#5a2a1a" font-size="7">Solo tracción trasera (2 motores)</text>
+        <g fill="#4a6070" font-size="7.5"><text x="652" y="142">ENA ← GPIO13 (PWM velocidad)</text><text x="652" y="156">IN1 ← GPIO26</text><text x="652" y="170">IN2 ← GPIO27</text><text x="652" y="196">OUT1/2 → Motor derecho</text><text x="652" y="210">OUT3/4 → Motor izquierdo</text><text x="652" y="226">12V/GND ← Batería directa</text></g>
+        <circle cx="642" cy="139" r="3" fill="#ff6b35"/><circle cx="642" cy="153" r="3" fill="#ff6b35"/><circle cx="642" cy="167" r="3" fill="#ff6b35"/>
+        <path d="M558,247 L600,247 L600,139 L642,139" stroke="#ff6b35" stroke-width="1.5" fill="none" marker-end="url(#a4)"/>
+        <path d="M558,219 L610,219 L610,153 L642,153" stroke="#ff6b35" stroke-width="1.2" fill="none" marker-end="url(#a4)"/>
+        <path d="M558,233 L615,233 L615,167 L642,167" stroke="#ff6b35" stroke-width="1.2" fill="none" marker-end="url(#a4)"/>
+        <rect x="670" y="320" width="80" height="36" rx="3" fill="#1a0a0a" stroke="#5a2a1a"/>
+        <text x="710" y="340" text-anchor="middle" fill="#ff6b35" font-size="8">MOTOR</text><text x="710" y="350" text-anchor="middle" fill="#5a2a1a" font-size="7">DERECHO</text>
+        <rect x="790" y="320" width="80" height="36" rx="3" fill="#1a0a0a" stroke="#5a2a1a"/>
+        <text x="830" y="340" text-anchor="middle" fill="#ff6b35" font-size="8">MOTOR</text><text x="830" y="350" text-anchor="middle" fill="#5a2a1a" font-size="7">IZQUIERDO</text>
+        <line x1="710" y1="285" x2="710" y2="320" stroke="#ff6b35" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a4)"/>
+        <line x1="830" y1="285" x2="830" y2="320" stroke="#ff6b35" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a4)"/>
+        <!-- Servo dirección -->
+        <rect x="60" y="400" width="185" height="100" rx="5" fill="#0d1320" stroke="#00d4ff" stroke-width="1.5"/>
+        <rect x="60" y="400" width="185" height="20" rx="5" fill="#1a2a3a"/><rect x="60" y="412" width="185" height="8" fill="#1a2a3a"/>
+        <text x="152" y="414" text-anchor="middle" fill="#00d4ff" font-size="9" letter-spacing="2">SERVO DIRECCIÓN</text>
+        <text x="152" y="423" text-anchor="middle" fill="#1a3a5a" font-size="7">Ruedas delanteras (cremallera)</text>
+        <g fill="#4a6070" font-size="8"><text x="72" y="442">Señal → GPIO25</text><text x="72" y="456">5V    → fuente externa</text><text x="72" y="470">GND   → GND</text><text x="72" y="490" fill="#00d4ff" font-size="7">90°=recto · 55°=izq · 125°=der</text></g>
+        <path d="M243,441 L310,441 L310,261 L352,261" stroke="#00d4ff" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#a2)"/>
+        <text x="262" y="435" fill="#00d4ff" font-size="7">PWM señal</text>
+        <!-- Compuerta -->
+        <rect x="330" y="490" width="230" height="100" rx="5" fill="#0d1320" stroke="#f0a500" stroke-width="1.5" stroke-dasharray="6,3"/>
+        <rect x="330" y="490" width="230" height="20" rx="5" fill="#2a1a00"/><rect x="330" y="502" width="230" height="8" fill="#2a1a00"/>
+        <text x="445" y="504" text-anchor="middle" fill="#f0a500" font-size="9" letter-spacing="2">COMPUERTA SEMILLAS ★</text>
+        <text x="445" y="513" text-anchor="middle" fill="#5a3a00" font-size="7">Opcional</text>
+        <g fill="#4a6070" font-size="8"><text x="342" y="532">Señal → GPIO33</text><text x="342" y="546">5V    → fuente externa</text><text x="342" y="560">GND   → GND</text><text x="342" y="578" fill="#f0a500" font-size="7">0° = cerrada · 90° = abierta</text></g>
+        <path d="M445,490 L455,490 L455,440" stroke="#f0a500" stroke-width="1.2" fill="none" stroke-dasharray="4,3" marker-end="url(#a5)"/>
+        <!-- ESP32-CAM -->
+        <rect x="640" y="420" width="235" height="110" rx="5" fill="#0d1320" stroke="#00d4ff" stroke-width="1.5"/>
+        <rect x="640" y="420" width="235" height="20" rx="5" fill="#1a2a3a"/><rect x="640" y="432" width="235" height="8" fill="#1a2a3a"/>
+        <text x="757" y="434" text-anchor="middle" fill="#00d4ff" font-size="9" letter-spacing="2">ESP32-CAM</text>
+        <text x="757" y="443" text-anchor="middle" fill="#1a3a5a" font-size="7">Se conecta al WiFi del robot</text>
+        <g fill="#4a6070" font-size="7.5"><text x="652" y="462">5V / GND → alimentación externa</text><text x="652" y="476">WiFi → red "MaPoint-Robot"</text><text x="652" y="490">Vídeo → http://192.168.4.x:81/stream</text><text x="652" y="508" fill="#00d4ff" font-size="7">MaPoint la detecta automáticamente</text></g>
+        <path d="M557,310 L600,310 L600,480 L640,480" stroke="#00d4ff" stroke-width="1.2" fill="none" stroke-dasharray="6,3" marker-end="url(#a2)"/>
+        <text x="572" y="395" fill="#00d4ff" font-size="7">WiFi</text>
+        <!-- Leyenda -->
+        <rect x="40" y="650" width="880" height="36" fill="#0d1320" rx="4"/>
+        <circle cx="70" cy="668" r="4" fill="#c792ea"/><text x="80" y="672" fill="#4a6070" font-size="7.5">GPS Adafruit</text>
+        <circle cx="160" cy="668" r="4" fill="#ff6b35"/><text x="170" y="672" fill="#4a6070" font-size="7.5">Motores L298N</text>
+        <circle cx="262" cy="668" r="4" fill="#00d4ff"/><text x="272" y="672" fill="#4a6070" font-size="7.5">Servo dirección</text>
+        <circle cx="374" cy="668" r="4" fill="#f0a500"/><text x="384" y="672" fill="#4a6070" font-size="7.5">Compuerta ★</text>
+        <circle cx="480" cy="668" r="4" fill="#00ff9d"/><text x="490" y="672" fill="#4a6070" font-size="7.5">WiFi / Vídeo</text>
+        <text x="820" y="672" fill="#1a2a3a" font-size="7">★ = opcional</text>
+      </svg>
+    </div>
+    <div style="background:var(--panel);border:1px solid var(--border);border-top:none;padding:28px">
+      <p class="sec-label" style="margin-bottom:14px">RESUMEN DE CONEXIONES</p>
+      <table class="pin-table">
+        <thead><tr><th>¿Qué conectas?</th><th>Desde</th><th>Pin del ESP32</th><th>A tener en cuenta</th></tr></thead>
+        <tbody>
+          <tr><td>GPS — datos de posición</td><td><span class="pin-chip chip-gps">GPS</span> pin TX</td><td>GPIO 16</td><td>El GPS manda su posición por aquí continuamente</td></tr>
+          <tr><td>GPS — alimentación</td><td>Regulador 3,3 V</td><td>GPS pin VIN + GND</td><td>¡Nunca 5 V al GPS o se rompe!</td></tr>
+          <tr><td>Motor — velocidad</td><td><span class="pin-chip chip-esp">ESP32</span> GPIO 13</td><td>L298N ENA</td><td>Controla qué tan rápido giran los motores</td></tr>
+          <tr><td>Motor — sentido de giro</td><td><span class="pin-chip chip-esp">ESP32</span> GPIO 26 / 27</td><td>L298N IN1 / IN2</td><td>Cambiar cuál está encendido invierte el motor</td></tr>
+          <tr><td>Servo de dirección — señal</td><td><span class="pin-chip chip-esp">ESP32</span> GPIO 25</td><td>Cable naranja del servo</td><td>No alimentes el servo desde el pin 5V del ESP32</td></tr>
+          <tr><td>Compuerta semillas ★ — señal</td><td><span class="pin-chip chip-esp">ESP32</span> GPIO 33</td><td>Cable señal del servo</td><td>MaPoint lo activa al llegar a la coordenada programada</td></tr>
+          <tr><td>ESP32-CAM — vídeo</td><td>Red WiFi</td><td>:81/stream</td><td>Se comunica por WiFi, sin cables adicionales</td></tr>
+          <tr><td>L298N — potencia motores</td><td>Batería directa (7–12 V)</td><td>L298N VCC / GND</td><td>Esta es la corriente "de fuerza" para los motores</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FIRMWARE ESP32 -->
+  <div id="tab-firmware" class="tab-panel">
+    <div style="background:var(--panel);border:1px solid var(--border);padding:28px">
+      <p style="font-size:.9rem;color:var(--text);line-height:1.8;margin-bottom:8px">Vamos a programar el ESP32 paso a paso. <strong>Si nunca has usado el Arduino IDE con ESP32, empieza por el paso 0.</strong> Si ya lo tienes configurado, ve al paso 1.</p>
+      <p style="font-size:.87rem;color:var(--muted);line-height:1.75;margin-bottom:24px">El programa que vamos a cargar hace tres cosas: <strong style="color:var(--text)">crea una red WiFi</strong> a la que se conectará el ordenador, <strong style="color:var(--text)">comparte la posición GPS</strong> del robot por esa red, y <strong style="color:var(--text)">escucha las órdenes</strong> de movimiento que envía MaPoint para mover los motores y el servo.</p>
+      <div class="fw-steps">
+
+        <!-- PASO 0 -->
+        <div class="fw-step open">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">00</span>
+            <span class="fw-step-title">INSTALAR EL ARDUINO IDE Y AÑADIR EL ESP32</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>Si ya tienes Arduino IDE con el ESP32 instalado, sáltate este paso.</p>
+            <p><strong>1. Descarga e instala Arduino IDE</strong> desde <strong>arduino.cc</strong>.</p>
+            <p><strong>2.</strong> Abre Arduino IDE. Ve a <strong>Archivo → Preferencias</strong> y en "Gestor de URLs adicionales de tarjetas" pega esta dirección exacta:</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json</pre>
+            <p><strong>3.</strong> Ve a <strong>Herramientas → Placa → Gestor de tarjetas</strong>, busca "esp32" e instala el de <em>Espressif Systems</em>.</p>
+            <p><strong>4.</strong> Conecta el ESP32 al ordenador con un cable USB. En <strong>Herramientas → Placa</strong> selecciona <strong>"ESP32 Dev Module"</strong>. En <strong>Puerto</strong> elige el COM que aparezca.</p>
+            <p><strong>5.</strong> Instala la librería del servo: <strong>Herramientas → Gestionar librerías</strong>, busca "ESP32Servo" de Kevin Harrington e instálala.</p>
+          </div>
+        </div>
+
+        <!-- PASO 1 -->
+        <div class="fw-step">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">01</span>
+            <span class="fw-step-title">CABECERA: LIBRERÍAS Y PINES</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>Crea un nuevo sketch en Arduino IDE. Copia y pega este bloque al principio. Aquí definimos qué herramientas usar y a qué pines hemos conectado cada componente. Si cambiaste algún pin al montar, cámbialo aquí también.</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>#include &lt;WiFi.h&gt;           // Para crear la red WiFi del robot
+#include &lt;WebServer.h&gt;      // Para publicar el GPS en una dirección web
+#include &lt;WiFiUdp.h&gt;        // Para recibir órdenes desde MaPoint
+#include &lt;HardwareSerial.h&gt; // Para leer el GPS por cable
+#include &lt;ESP32Servo.h&gt;     // Para mover el servo de dirección
+
+// ── Red WiFi que crea el robot ─────────────────────────────
+// MaPoint se conectará a este nombre y contraseña
+const char* SSID     = "MaPoint-Robot";
+const char* PASSWORD = "mapoint123";
+
+// ── Pines del driver L298N (motores traseros) ──────────────
+#define ENA  13   // Velocidad del motor (más valor = más rápido)
+#define IN1  26   // Controla el sentido de giro
+#define IN2  27   // Controla el sentido de giro
+
+// ── Pines de los servos ────────────────────────────────────
+#define PIN_SERVO_DIR  25  // Servo de dirección (ruedas delanteras)
+#define PIN_SERVO_COMP 33  // Servo compuerta semillas (opcional)
+
+// ── Pin del GPS ────────────────────────────────────────────
+#define GPS_RX 16  // El ESP32 escucha aquí los datos del GPS
+#define GPS_TX 17  // Para hablar con el GPS (casi no se usa)
+
+// ── Objetos internos ───────────────────────────────────────
+HardwareSerial gpsSerial(2); // UART2 del ESP32 para el GPS
+WebServer server(80);        // Servidor web en el puerto 80
+WiFiUDP   udp;               // Para recibir órdenes de MaPoint
+Servo servoDir;              // Servo de dirección
+Servo servoComp;             // Servo compuerta (opcional)
+
+// ── Variables internas ─────────────────────────────────────
+String nmeaBuffer = ""; // Aquí guardamos los datos GPS antes de enviarlos
+String lineaGPS   = ""; // Línea actual que llega del GPS
+const int PWM_VEL  = 200; // Velocidad (0 = parado, 255 = máximo)
+const int UDP_PORT = 8888; // Puerto donde escuchamos las órdenes</pre>
+          </div>
+        </div>
+
+        <!-- PASO 2 -->
+        <div class="fw-step">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">02</span>
+            <span class="fw-step-title">MOVER LOS MOTORES Y EL SERVO DE DIRECCIÓN</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>Estas son las funciones que mueven el robot. El L298N controla los motores traseros (los que dan la tracción), y el servo gira las ruedas delanteras para cambiar de dirección.</p>
+            <p>El servo trabaja con ángulos: <strong>90° = recto, 55° = izquierda, 125° = derecha</strong>. Si el servo gira al revés de lo que esperabas, simplemente cambia el valor de izquierda por el de derecha y viceversa.</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>// ── MOTORES TRASEROS ──────────────────────────────────────
+
+void motorParar() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, 0);
+}
+
+void motorAdelante(int vel = PWM_VEL) {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, vel);
+}
+
+void motorAtras(int vel = PWM_VEL) {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  analogWrite(ENA, vel);
+}
+
+// ── SERVO DE DIRECCIÓN (cremallera) ───────────────────────
+// Ajusta los ángulos si el giro no coincide con tu montaje
+
+void dirRecto()      { servoDir.write(90);  } // Recto
+void dirIzquierda()  { servoDir.write(55);  } // Giro izquierda
+void dirDerecha()    { servoDir.write(125); } // Giro derecha
+
+// ── COMPUERTA DE SEMILLAS (opcional) ──────────────────────
+void abrirCompuerta()  { servoComp.write(90); } // Abierta
+void cerrarCompuerta() { servoComp.write(0);  } // Cerrada</pre>
+            <p><strong>Consejo:</strong> Si el robot gira menos de lo que debería, prueba con ángulos más extremos, por ejemplo 40° y 140°.</p>
+          </div>
+        </div>
+
+        <!-- PASO 3 -->
+        <div class="fw-step">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">03</span>
+            <span class="fw-step-title">RECIBIR LAS ÓRDENES QUE ENVÍA MAPOINT</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>MaPoint manda mensajes de texto por WiFi para decirle al robot qué hacer: "adelante", "izquierda", "parar"... Esta función los recibe y llama a la acción correspondiente.</p>
+            <p>Por ejemplo, cuando MaPoint dice "izquierda", el servo gira a la izquierda <em>y</em> el motor avanza a la vez, igual que un coche normal.</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>void procesarOrdenes() {
+  int len = udp.parsePacket();
+  if (!len) return; // si no hay mensaje, salir
+
+  char buf[64];
+  udp.read(buf, sizeof(buf) - 1);
+  buf[len] = '\0';
+  String orden = String(buf);
+  orden.trim(); // eliminar espacios sobrantes
+
+  // Mostrar en el monitor serie para saber qué pasa
+  Serial.println("Orden recibida: " + orden);
+
+  if (orden == "adelante") {
+    dirRecto(); motorAdelante();
+  } else if (orden == "atras") {
+    dirRecto(); motorAtras();
+  } else if (orden == "izquierda") {
+    dirIzquierda(); motorAdelante();
+  } else if (orden == "derecha") {
+    dirDerecha(); motorAdelante();
+  } else if (orden == "parar") {
+    motorParar(); dirRecto();
+  } else if (orden == "centrar_direccion") {
+    // Tecla M en MaPoint: para y centra las ruedas
+    motorParar(); dirRecto();
+  } else if (orden == "abrir_compuerta") {
+    abrirCompuerta();
+  } else if (orden == "cerrar_compuerta") {
+    cerrarCompuerta();
+  }
+}</pre>
+          </div>
+        </div>
+
+        <!-- PASO 4 -->
+        <div class="fw-step">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">04</span>
+            <span class="fw-step-title">LEER EL GPS Y COMPARTIR LA POSICIÓN</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>El GPS manda continuamente pequeños mensajes de texto con la posición (son las llamadas "tramas NMEA"). El ESP32 los va guardando y los publica en una dirección web, de forma que MaPoint puede consultarla cada segundo para saber dónde está el robot.</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>// Acumula los mensajes que llegan del GPS ──────────────────
+void leerGPS() {
+  while (gpsSerial.available()) {
+    char c = (char)gpsSerial.read();
+    if (c == '\n') {
+      lineaGPS.trim();
+      if (lineaGPS.startsWith("$")) {
+        nmeaBuffer += lineaGPS + "\n";
+        // Limite de 2 KB para no llenar la memoria
+        if (nmeaBuffer.length() > 2000) nmeaBuffer = "";
+      }
+      lineaGPS = "";
+    } else {
+      lineaGPS += c;
+    }
+  }
+}
+
+// Publica la posición GPS en una URL ──────────────────────
+// MaPoint consulta http://192.168.4.1/gps para obtenerla
+void configurarServidor() {
+  server.on("/gps", HTTP_GET, []() {
+    server.send(200, "text/plain", nmeaBuffer);
+    nmeaBuffer = ""; // limpiar después de enviar
+  });
+  server.begin();
+}</pre>
+          </div>
+        </div>
+
+        <!-- PASO 5 -->
+        <div class="fw-step">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">05</span>
+            <span class="fw-step-title">SETUP Y LOOP — EL PROGRAMA COMPLETO</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>El <code>setup()</code> se ejecuta una sola vez al encender: configura los pines, crea la red WiFi y arranca el servidor. El <code>loop()</code> se repite sin parar: lee el GPS, responde si MaPoint pide datos, y ejecuta las órdenes de movimiento.</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>void setup() {
+  Serial.begin(115200); // Para ver mensajes en el monitor serie
+
+  // Iniciar comunicación con el GPS a 9600 baudios
+  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
+
+  // Configurar pines del L298N como salida
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  motorParar(); // Empezar con el robot parado (por seguridad)
+
+  // Iniciar los servos
+  servoDir.attach(PIN_SERVO_DIR);
+  servoComp.attach(PIN_SERVO_COMP); // quitar esta línea si no tienes compuerta
+  dirRecto();        // Ruedas al centro al arrancar
+  cerrarCompuerta(); // Compuerta cerrada al arrancar
+
+  // Crear la red WiFi del robot
+  WiFi.softAP(SSID, PASSWORD);
+  Serial.print("Robot listo. IP: ");
+  Serial.println(WiFi.softAPIP()); // Debe mostrar 192.168.4.1
+
+  // Publicar el GPS y empezar a escuchar órdenes
+  configurarServidor();
+  udp.begin(UDP_PORT);
+  Serial.println("Esperando conexión de MaPoint...");
+}
+
+void loop() {
+  leerGPS();              // Guardar datos del GPS
+  server.handleClient();  // Responder si MaPoint pide la posición
+  procesarOrdenes();      // Mover el robot si llega una orden
+}</pre>
+            <p><strong>Para subir el código:</strong> pulsa la flecha (→) en Arduino IDE. Si da error de puerto, asegúrate de que el ESP32 está conectado por USB y el puerto COM correcto está seleccionado en <em>Herramientas → Puerto</em>. Abre el Monitor Serie a 115200 baudios para ver los mensajes de arranque.</p>
+          </div>
+        </div>
+
+      </div><!-- fin fw-steps -->
+    </div>
+  </div>
+
+  <!-- FIRMWARE CAM -->
+  <div id="tab-camfirmware" class="tab-panel">
+    <div style="background:var(--panel);border:1px solid var(--border);padding:28px">
+      <p style="font-size:.9rem;color:var(--text);line-height:1.8;margin-bottom:20px">La ESP32-CAM es una cámara con WiFi incorporado. No hace falta escribir código desde cero: Arduino IDE ya incluye un ejemplo llamado <strong>CameraWebServer</strong> que hace exactamente lo que necesitamos. Solo hay que cambiar dos líneas para que la cámara se conecte a la red WiFi del robot en vez de a tu router de casa.</p>
+      <div class="fw-steps">
+
+        <div class="fw-step open">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">01</span>
+            <span class="fw-step-title">ABRIR EL EJEMPLO DE CÁMARA</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>En Arduino IDE ve a: <strong>Archivo → Ejemplos → ESP32 → Camera → CameraWebServer</strong>.</p>
+            <p>Al principio del código verás varias líneas con nombres de modelos de cámara. La mayoría estarán comentadas (con <code>//</code> delante). Deja <strong>solo esta sin comentar</strong> y comenta el resto:</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>#define CAMERA_MODEL_AI_THINKER   // ← esta sí, el resto comentadas
+// #define CAMERA_MODEL_WROVER_KIT
+// #define CAMERA_MODEL_ESP_EYE</pre>
+            <p>También necesitas seleccionar la placa correcta: <strong>Herramientas → Placa → "AI Thinker ESP32-CAM"</strong>.</p>
+          </div>
+        </div>
+
+        <div class="fw-step">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">02</span>
+            <span class="fw-step-title">CAMBIAR EL WIFI AL DEL ROBOT</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>Busca en el archivo estas dos líneas (están al principio) y cámbialas por el nombre y contraseña de la red del robot, las mismas que pusiste en el ESP32 principal:</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button>const char* ssid     = "MaPoint-Robot"; // igual que en el ESP32
+const char* password = "mapoint123";    // igual que en el ESP32</pre>
+            <p>Así la cámara se conectará automáticamente a la red del robot cuando arranque, y MaPoint la encontrará en <code>http://192.168.4.x:81/stream</code>.</p>
+          </div>
+        </div>
+
+        <div class="fw-step">
+          <div class="fw-step-header" onclick="toggleFw(this)">
+            <span class="fw-step-num">03</span>
+            <span class="fw-step-title">CÓMO SUBIR EL CÓDIGO A LA ESP32-CAM</span>
+            <svg class="fw-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="fw-body">
+            <p>La ESP32-CAM no tiene puerto USB propio, así que necesitas un adaptador USB-UART (también llamado FTDI o CH340). Son muy baratos.</p>
+<pre><button class="copy-btn" onclick="copyCode(this)">COPIAR</button">// Conexión FTDI → ESP32-CAM para programar:
+FTDI 5V  → ESP32-CAM 5V
+FTDI GND → ESP32-CAM GND
+FTDI TX  → ESP32-CAM U0R
+FTDI RX  → ESP32-CAM U0T
+GND      → IO0  ← solo mientras subes el código, luego quítalo</pre>
+            <p><strong>Pasos:</strong></p>
+            <p><strong>1.</strong> Conecta el cable de GND al pin IO0 (modo de programación).</p>
+            <p><strong>2.</strong> Conecta el FTDI al ordenador y sube el código desde Arduino IDE.</p>
+            <p><strong>3.</strong> Cuando termine, desconecta el cable de IO0.</p>
+            <p><strong>4.</strong> Pulsa el botón RESET de la ESP32-CAM.</p>
+            <p><strong>5.</strong> Abre el Monitor Serie a 115200 baudios. Verás algo como: <code>Camera Ready! Use 'http://192.168.4.2' to connect</code>. Esa dirección es la que MaPoint usará para el vídeo.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKLIST -->
+  <div id="tab-checklist" class="tab-panel">
+    <div style="background:var(--panel);border:1px solid var(--border);padding:28px">
+      <p style="font-size:.88rem;color:var(--muted);margin-bottom:20px">Haz clic en cada paso para marcarlo como hecho. Úsalo como guía mientras montas el robot.</p>
+      <ul class="checklist">
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Comprar los componentes</strong> — ESP32, ESP32-CAM, GPS Adafruit, L298N, servo de dirección, motores DC, chasis, batería LiPo y regulador DC-DC</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Montar el chasis</strong> — fijar los motores traseros, instalar las ruedas y colocar el servo de dirección en el eje delantero con la cremallera</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Cablear el L298N</strong> — conectar OUT1/OUT2 a los motores traseros y alimentar con la batería directamente (7–12 V)</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Conectar el ESP32 al L298N</strong> — ENA→GPIO13, IN1→GPIO26, IN2→GPIO27</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Conectar el servo de dirección</strong> — señal→GPIO25, alimentación 5V externa, GND común</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Conectar el GPS Adafruit</strong> — TX→GPIO16, VIN→3,3V del ESP32, GND. ¡Nunca 5V al GPS!</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>(Opcional) Compuerta de semillas</strong> — servo señal→GPIO33, alimentación 5V externa, GND</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Instalar Arduino IDE</strong> y añadir soporte para ESP32 (paso 00 de "Programar ESP32")</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Instalar la librería ESP32Servo</strong> desde el gestor de librerías de Arduino IDE</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Subir el firmware al ESP32 principal</strong> — al arrancar debe aparecer "Robot listo. IP: 192.168.4.1" en el monitor serie</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Subir el firmware a la ESP32-CAM</strong> — con FTDI, usando CameraWebServer con las credenciales correctas</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Conectar el ordenador a la red "MaPoint-Robot"</strong> — debe aparecer como red WiFi cuando el ESP32 esté encendido</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Abrir MaPoint</strong> — comprobar que la cámara aparece en el panel de vídeo y que el GPS actualiza la posición en el mapa</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Probar el control manual</strong> — usar las flechas del teclado para comprobar que los motores y el servo responden</div></li>
+        <li onclick="toggleCheck(this)"><span class="check-box">✓</span><div><strong>Primera prueba autónoma</strong> — añadir un waypoint en el mapa y dejar que el robot navegue solo hasta él en espacio abierto</div></li>
+      </ul>
+    </div>
+  </div>
+
+</section>
+
+<!-- ASISTENTE IA -->
+<section id="asistente" style="border-top:1px solid var(--border);padding-bottom:60px">
+  <p class="sec-label">// 05 — ASISTENTE DE MONTAJE</p>
+  <h2 class="sec-title">Asistente IA — MaPoint</h2>
+  <p style="font-size:.92rem;color:var(--text);line-height:1.75;max-width:700px;margin-bottom:36px">¿Tienes dudas con el montaje, las conexiones o la programación del robot? Este asistente conoce el hardware de MaPoint al completo y puede guiarte paso a paso en español o inglés.</p>
+
+  <!-- Chat embebido -->
+  <div id="chat-outer" style="border:1px solid var(--border);background:var(--panel)">
+    <!-- Mensajes -->
+    <div id="cm" style="height:460px;overflow-y:auto;padding:22px 20px;display:flex;flex-direction:column;gap:16px;scrollbar-width:thin;scrollbar-color:#1a2a3a transparent">
+      <div class="m-bot"><div class="av">IA</div><div class="bb">¡Hola! Soy el asistente técnico de MaPoint. Conozco el hardware al completo: ESP32, GPS Adafruit, servo de cremallera, L298N, ESP32-CAM y compuerta de semillas.<br><br>¿En qué te puedo ayudar?</div></div>
+    </div>
+    <!-- Sugerencias -->
+    <div id="sug" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 20px;border-top:1px solid var(--border)">
+      <button class="sb" onclick="sg(this)">¿Cómo conecto el GPS Adafruit al ESP32?</button>
+      <button class="sb" onclick="sg(this)">El servo de dirección no responde, ¿qué compruebo?</button>
+      <button class="sb" onclick="sg(this)">¿Cómo configuro la red WiFi del robot?</button>
+      <button class="sb" onclick="sg(this)">¿Qué hace la compuerta de semillas?</button>
+      <button class="sb" onclick="sg(this)">MaPoint no encuentra la ESP32-CAM, ¿por qué?</button>
+      <button class="sb" onclick="sg(this)">¿Cómo añado waypoints para la ruta autónoma?</button>
+    </div>
+    <!-- Input -->
+    <div style="display:flex;gap:10px;border-top:1px solid var(--border);padding:12px 16px">
+      <textarea id="ci" rows="2" placeholder="Escribe tu pregunta aquí… (Enter para enviar, Shift+Enter para nueva línea)"
+        style="flex:1;background:#050810;border:1px solid var(--border);color:var(--text);font-family:'Exo 2',sans-serif;font-size:.88rem;padding:10px 14px;resize:none;outline:none;line-height:1.5;transition:border-color .2s"
+        onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+      <button id="csend" onclick="send()"
+        style="width:48px;background:var(--accent);border:none;color:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s"
+        onmouseover="this.style.background='#79baff'" onmouseout="this.style.background='var(--accent)'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+    <p style="font-size:.63rem;color:var(--muted);font-family:'Share Tech Mono',monospace;text-align:center;padding:6px 0 10px;letter-spacing:.08em">ASISTENTE POWERED BY CLAUDE · CÓDIGO FUENTE PROPIETARIO NO ACCESIBLE</p>
+  </div>
+</section>
+
+<style>
+.m-bot,.m-usr{display:flex;gap:12px;align-items:flex-start}
+.m-usr{flex-direction:row-reverse}
+.av{width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-weight:700;font-size:.6rem}
+.m-bot .av{background:linear-gradient(135deg,#00d4ff,#00ff9d);color:#080c10}
+.m-usr .av{background:#1a2a3a;color:#4a6070}
+.bb{max-width:78%;padding:13px 17px;font-size:.87rem;line-height:1.75;color:var(--text);border:1px solid var(--border)}
+.m-bot .bb{background:#0b1520;border-color:#1a2d3a}
+.m-usr .bb{background:#0d1f2d;border-color:#1a2a3a;color:#a8c0d0}
+.bb code{background:#050810;border:1px solid var(--border);padding:1px 6px;font-family:'Share Tech Mono',monospace;font-size:.78rem;color:#00d4ff;border-radius:2px}
+.bb pre{background:#040810!important;border:1px solid #1a2a3a!important;border-left:3px solid #00d4ff!important;padding:12px 14px!important;margin:10px 0!important;overflow-x:auto;font-family:'Share Tech Mono',monospace!important;font-size:.75rem!important;color:#abb2bf!important;white-space:pre!important;max-height:none!important}
+.bb strong{color:#e0ecf8}
+.bb ul,.bb ol{padding-left:20px;margin:6px 0}
+.bb li{margin:3px 0}
+.td{display:flex;gap:5px;align-items:center;padding:4px 0}
+.td span{width:7px;height:7px;border-radius:50%;background:#00d4ff;animation:db .9s infinite}
+.td span:nth-child(2){animation-delay:.15s}.td span:nth-child(3){animation-delay:.3s}
+@keyframes db{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+.sb{background:var(--panel);border:1px solid var(--border);color:#4a6070;font-family:'Share Tech Mono',monospace;font-size:.7rem;padding:7px 13px;cursor:pointer;letter-spacing:.05em;transition:all .2s;text-align:left}
+.sb:hover{border-color:#00d4ff;color:#00d4ff;background:#0f1a24}
+</style>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">MAPOINT v11.0</div>
+  <div class="footer-note">SISTEMA DE NAVEGACIÓN AUTÓNOMA · PROYECTO PERSONAL</div>
+</footer>
+
+<script>
+// ── TABS ────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── ACORDEÓN FIRMWARE ────────────────────────────────────────
+function toggleFw(header) {
+  header.parentElement.classList.toggle('open');
+}
+
+// ── CHECKLIST ────────────────────────────────────────────────
+function toggleCheck(li) {
+  li.classList.toggle('done');
+  li.querySelector('.check-box').textContent = li.classList.contains('done') ? '✓' : '';
+}
+
+// ── COPIAR CÓDIGO ────────────────────────────────────────────
+function copyCode(btn) {
+  const pre = btn.parentElement;
+  // Tomar texto sin el botón
+  const clone = pre.cloneNode(true);
+  clone.querySelector('.copy-btn')?.remove();
+  const text = clone.innerText.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ COPIADO';
+    setTimeout(() => btn.textContent = 'COPIAR', 2000);
+  });
+}
+
+// ── CHAT IA ─────────────────────────────────────────────────
+const SYS = `Eres el asistente técnico oficial de MaPoint, un sistema de navegación autónoma para robots agrícolas.
+Ayuda a los usuarios con el montaje, cableado y firmware usando lenguaje claro y sencillo, sin tecnicismos. Usa analogías.
+
+HARDWARE:
+- ESP32 DevKit v1: crea WiFi "MaPoint-Robot" (pass: mapoint123), IP 192.168.4.1, UDP puerto 8888, HTTP /gps
+- GPS Adafruit Ultimate PA6H: 3.3V (NUNCA 5V), TX->GPIO16, 9600 baudios NMEA
+- L298N: ENA->GPIO13 PWM, IN1->GPIO26, IN2->GPIO27. Solo 2 motores traseros. VCC directo a bateria 7-12V
+- Servo direccion (cremallera): senal->GPIO25, 5V externo. 90=recto, 55=izq, 125=der
+- Compuerta semillas (opcional): senal->GPIO33. 0=cerrada, 90=abierta
+- ESP32-CAM: necesita FTDI para programar. CameraWebServer, modelo AI_THINKER. Red "MaPoint-Robot". Stream :81/stream
+- Comandos UDP: adelante, atras, izquierda, derecha, parar, centrar_direccion, abrir_compuerta, cerrar_compuerta
+- Libreria servo: ESP32Servo de Kevin Harrington
+
+SOFTWARE MAPOINT v11.0 (Windows):
+- Waypoint alcanzado: distancia < 2 metros
+- Error de rumbo > 20 grados: gira primero, luego avanza
+- Flechas del teclado = control manual. Tecla M = centrar direccion
+- Escanea 192.168.4.2 a 192.168.4.20 para encontrar la camara automaticamente
+
+REGLAS:
+1. NUNCA compartas el codigo Python de mapoint_app.py. Es propietario.
+2. SI puedes dar fragmentos de firmware Arduino/C++ para el ESP32.
+3. Responde en el mismo idioma que el usuario (espanol o ingles).
+4. Lenguaje sencillo, sin jerga. Haz preguntas para diagnosticar problemas.`;
+
+const hist = [];
+
+function scrollFin() {
+  const c = document.getElementById('cm');
+  if (c) c.scrollTop = c.scrollHeight;
+}
+
+function fmt(t) {
+  t = t.replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre>$1</pre>');
+  t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/^[\-\*•] (.+)$/gm, '<li>$1</li>');
+  t = t.replace(/\n/g, '<br>');
+  return t;
+}
+
+function burbuja(rol, txt) {
+  const c = document.getElementById('cm');
+  if (!c) return;
+  const d = document.createElement('div');
+  d.className = rol === 'user' ? 'm-usr' : 'm-bot';
+  d.innerHTML = '<div class="av">' + (rol === 'user' ? 'T\u00DA' : 'IA') + '</div><div class="bb">' + fmt(txt) + '</div>';
+  c.appendChild(d);
+  scrollFin();
+}
+
+function typing(show) {
+  if (show) {
+    const c = document.getElementById('cm');
+    const d = document.createElement('div');
+    d.className = 'm-bot'; d.id = 'td';
+    d.innerHTML = '<div class="av">IA</div><div class="bb"><div class="td"><span></span><span></span><span></span></div></div>';
+    c.appendChild(d); scrollFin();
+  } else {
+    document.getElementById('td')?.remove();
+  }
+}
+
+async function send() {
+  const inp = document.getElementById('ci');
+  const btn = document.getElementById('csend');
+  const sug = document.getElementById('sug');
+  if (!inp) return;
+  const txt = inp.value.trim();
+  if (!txt) return;
+
+  inp.value = '';
+  inp.disabled = true;
+  btn.disabled = true;
+  if (sug) sug.style.display = 'none';
+
+  burbuja('user', txt);
+  hist.push({ role: 'user', content: txt });
+  typing(true);
+
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer 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',
+        'HTTP-Referer': 'https://izan09gijon.github.io',
+        'X-Title': 'MaPoint Asistente'
+      },
+      body: JSON.stringify({
+        model: 'mistralai/mistral-7b-instruct:free',
+        messages: [
+          { role: 'system', content: SYS },
+          ...hist
+        ]
+      })
+    });
+
+    const data = await r.json();
+    typing(false);
+
+    if (data.error) throw new Error(data.error.message);
+    const res = data?.choices?.[0]?.message?.content || 'No obtuve respuesta, inténtalo de nuevo.';
+    hist.push({ role: 'assistant', content: res });
+    burbuja('assistant', res);
+
+  } catch (e) {
+    typing(false);
+    burbuja('assistant', 'No pude conectar con el asistente ahora mismo. Consulta las pestañas de la guía de montaje mientras tanto.');
+  }
+
+  inp.disabled = false;
+  btn.disabled = false;
+  inp.focus();
+}
+
+function sg(btn) {
+  const ci = document.getElementById('ci');
+  if (ci) { ci.value = btn.textContent; send(); }
+}
+</script>
